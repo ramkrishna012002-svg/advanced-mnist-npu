@@ -1,0 +1,1 @@
+module weight_buffer(input wire clk,input wire rst,input wire we,input wire [12:0] addr,input wire signed [7:0] din,output reg signed [7:0] dout); reg signed [7:0] mem[0:7839]; always @(posedge clk) begin if(rst) dout<=0; else if(we) begin mem[addr]<=din; dout<=din; end else dout<=mem[addr]; end endmodule

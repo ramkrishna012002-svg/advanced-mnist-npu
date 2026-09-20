@@ -1,0 +1,1 @@
+module input_buffer(input wire clk,input wire rst,input wire we,input wire [9:0] addr,input wire signed [7:0] din,output reg signed [7:0] dout); reg signed [7:0] mem[0:783]; integer i; always @(posedge clk) begin if(rst) begin dout<=0; for(i=0;i<784;i=i+1) mem[i]<=0; end else if(we) begin mem[addr]<=din; dout<=din; end else dout<=mem[addr]; end endmodule
