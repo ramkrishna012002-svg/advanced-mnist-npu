@@ -37,7 +37,7 @@ MNIST 784 INT8 -> Layer 1 784x128 -> INT32 bias -> requantize/ReLU -> 128 INT8 -
 
 ## Hardware architecture
 
-The reusable 4x4 systolic core has 16 registered PEs. Activations move left-to-right, weights move top-to-bottom, and each PE performs signed INT8 multiplication with INT32 accumulation.
+The reusable 4x4 systolic core has 16 registered PEs. Activations move left-to-right, weights move top-to-bottom, and each PE performs signed INT8 multiplication with INT32 accumulation. `mnist_npu_top.v` is a correctness-first sequential 3-layer RTL reference that uses the same INT8/INT32 arithmetic; the 4x4 core is the optimized compute fabric to be scheduled/tiled into the final implementation.
 
 ## Repository
 
