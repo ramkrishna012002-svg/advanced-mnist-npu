@@ -1,30 +1,16 @@
-# Vivado generated files
+vivado_project/
+.Xil/
 *.jou
 *.log
 *.str
-*.wdb
 *.pb
-*.rpt
-*.dcp
-*.bit
-*.ltx
-*.xsa
-*.xpr
-*.cache/
-*.hw/
-*.ip_user_files/
-*.runs/
-*.sim/
-*.gen/
-*.srcs/
-# Python
+*.wdb
+*.wcfg
+data/
+*.pt
+*.pth
+*.npz
+weights_*.mem
+bias_*.mem
 __pycache__/
-*.py[cod]
-.venv/
-venv/
-.env
-# OS/editor
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
+*.pyc
