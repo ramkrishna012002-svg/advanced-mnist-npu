@@ -43,7 +43,7 @@ The reusable 4x4 systolic core has 16 registered PEs. Activations move left-to-r
 
 - `rtl/`: Verilog-2001 hardware modules
 - `sim/`: RTL testbench
-- `python/`: training, integer reference, quantization, profiling and memory export
+- `python/`: training, INT8 calibration, integer reference, profiling and memory export
 - `docs/`: architecture and performance documentation
 - `vivado/`: Vivado project Tcl
 
@@ -57,4 +57,4 @@ The repository does not fabricate trained weight files. Export the actual traine
 
 After Vivado synthesis/implementation measure: cycles/image, latency, throughput, LUT, FF, DSP, BRAM, Fmax, timing slack and power.
 
-See `docs/ARCHITECTURE.md` and `docs/PERFORMANCE.md`.
+Use `python/quantize_checkpoint.py` after training to create `quantized_mnist.npz`, then `python/export_mem.py` to create Verilog memory files. See `docs/ARCHITECTURE.md` and `docs/PERFORMANCE.md`.
