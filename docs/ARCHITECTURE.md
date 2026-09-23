@@ -1,24 +1,37 @@
-# 4x4 INT8 True Systolic MNIST NPU Architecture
+# MNIST Integer NPU Architecture
 
-## Numerical format
-- Activation/input: signed INT8, -128..127
-- Weight: signed INT8, -128..127
-- Product: signed 16-bit
-- Accumulator/logit path: signed INT32
+Network: 784 -> 128 -> 128 -> 10.
 
-A dot product is `acc = bias + sum(input[i] * weight[i])`.
+Data path:
 
-## Array mapping
-The 4x4 array represents four parallel input streams and four output-class columns for one class group. Activations move left to right and weights move top to bottom. Each PE registers both streams and performs `acc_next = acc + signed(A_in) * signed(W_in)`.
+INT8 activation x INT8 weight -> INT16 product -> INT32 accumulator -> INT32 bias -> requantization -> INT8 -> ReLU.
 
-## MNIST dimensions
-A flattened MNIST image contains 784 pixels. A 10-class linear output layer has 7,840 INT8 weights and 10 INT32 biases. Classes can be scheduled as groups 0..3, 4..7, and 8..9.
+INT8 is signed (-128..127). Biases are stored in the accumulator domain.
 
-## Scheduling note
-A production systolic implementation normally uses temporal skewing so intended activation/weight pairs meet at the correct PE in the correct cycle. This repository is a modular starter and does not yet provide an optimized end-to-end 784-feature scheduler.
+## 4x4 systolic core
 
-## Bias and argmax
-After accumulation, signed INT32 bias is added. Classification uses argmax over the ten logits; softmax is not required for the predicted class.
+The core contains 16 PEs. Activations move left-to-right, weights move top-to-bottom, and each PE performs:
 
-## Verification status
-The RTL, Python arithmetic model, simulation scaffold, and Vivado script are intentionally separated. The current testbench is not a trained-MNIST accuracy test. End-to-end verification remains development work.
+acc_next = acc + signed(A) * signed(W)
+
+The same core is reused for all three GEMM layers. A complete optimized scheduler must skew streams so matching activation/weight pairs meet at the intended PE.
+
+## Workload
+
+- L1: 784*128 = 100,352 MACs/image
+- L2: 128*128 = 16,384 MACs/image
+- L3: 128*10 = 1,280 MACs/image
+- Total: 118,016 MACs/image
+- Parameters including biases: 118,282
+
+## Storage
+
+- INT8 weights: 118,016 bytes
+- INT32 biases: 266*4 = 1,064 bytes
+- weights + biases: 119,080 bytes
+
+## Verification
+
+Python integer reference == Verilog RTL == FPGA result.
+
+Compare product, accumulator, bias result, requantized activation, ReLU output, logits and final argmax.
