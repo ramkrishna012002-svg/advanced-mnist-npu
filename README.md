@@ -2,59 +2,62 @@
 
 Complete project target: **784 -> 128 -> 128 -> 10**.
 
-## Current measured results
+## Keras + NPU flow
 
-- PyTorch FP32 reference accuracy: **96.48%**
-- Full 3-layer Integer NPU model accuracy: **93.70%**
-- Difference: **2.78 percentage points**
+Keras is now included as the training/reference front end. The intended flow is:
+
+MNIST -> Keras FP32 training -> saved checkpoint -> INT8 quantization -> Python integer golden model -> Verilog RTL -> Vivado simulation/synthesis -> FPGA.
+
+Keras model:
+- Input: 784 flattened pixels
+- Dense1: 128 + ReLU
+- Dense2: 128 + ReLU
+- Dense3: 10 logits
+- Argmax: digit 0-9
+
+Run:
+1. `python keras/train_mnist.py`
+2. `python keras/evaluate_mnist.py`
+3. `python keras/export_weights.py`
+4. `python python/quantize_mnist.py`
+5. `python python/golden_model.py`
+
+The Keras scripts use MNIST's 60,000 training and 10,000 test images and normalize pixels from 0-255 to 0-1.
+
+## Current hardware/reference architecture
+
 - Quantization: signed INT8 activations/weights, INT32 accumulators/biases
 - Compute core: 4x4 true systolic array = 16 PEs
-- Profile set: 1,000 samples
-
-Reported software/profile latency:
-
-- Input preparation: 98.216 ms
-- Layer 1 GEMM: 18.428 ms
-- Layer 2 GEMM: 27.780 ms
-- Layer 3 GEMM: 2.453 ms
-- L1 activation/scale: 1.621 ms
-- L2 activation/scale: 1.000 ms
-- Argmax: 0.198 ms
-
-**These latency values are software/profile measurements, not FPGA timing.**
-
-## End-to-end datapath
-
-MNIST 784 INT8 -> Layer 1 784x128 -> INT32 bias -> requantize/ReLU -> 128 INT8 -> Layer 2 128x128 -> INT32 bias -> requantize/ReLU -> 128 INT8 -> Layer 3 128x10 -> 10 INT32 logits -> argmax.
-
-## MAC workload
-
 - Layer 1: 100,352 MACs/image
 - Layer 2: 16,384 MACs/image
 - Layer 3: 1,280 MACs/image
 - Total: **118,016 MACs/image**
 - Total parameters including biases: **118,282**
 
-## Hardware architecture
-
-The reusable 4x4 systolic core has 16 registered PEs. Activations move left-to-right, weights move top-to-bottom, and each PE performs signed INT8 multiplication with INT32 accumulation. `mnist_npu_top.v` is a correctness-first sequential 3-layer RTL reference that uses the same INT8/INT32 arithmetic; the 4x4 core is the optimized compute fabric to be scheduled/tiled into the final implementation.
+The reusable 4x4 systolic core has registered PEs. Activations move left-to-right, weights move top-to-bottom, and each PE performs signed INT8 multiplication with INT32 accumulation.
 
 ## Repository
 
-- `rtl/`: Verilog-2001 hardware modules
-- `sim/`: RTL testbench
-- `python/`: training, INT8 calibration, integer reference, profiling and memory export
-- `docs/`: architecture and performance documentation
+- `keras/`: Keras model, training, evaluation and weight export
+- `python/`: quantization and integer golden model
+- `rtl/`: Verilog hardware modules
+- `sim/` or `tb/`: RTL simulation
+- `docs/`: architecture/performance documentation
 - `vivado/`: Vivado project Tcl
 
-## Important verification rule
+## Verification rule
 
-Python integer reference, RTL simulation and final FPGA output must use identical quantization scales, rounding, saturation, bias representation and ReLU behavior.
+Python integer reference, RTL simulation and FPGA output must use identical quantization scales, rounding, saturation, bias representation and ReLU behavior.
 
-The repository does not fabricate trained weight files. Export the actual trained/quantized checkpoint before running end-to-end RTL classification.
+Trained weight files are generated artifacts; they should be produced from the actual Keras checkpoint rather than fabricated constants.
 
-## FPGA results still to measure
+## FPGA measurements
 
-After Vivado synthesis/implementation measure: cycles/image, latency, throughput, LUT, FF, DSP, BRAM, Fmax, timing slack and power.
+After Vivado synthesis/implementation measure cycles/image, latency, throughput, LUT, FF, DSP, BRAM, Fmax, timing slack and power.
 
-Use `python/quantize_checkpoint.py` after training to create `quantized_mnist.npz`, then `python/export_mem.py` to create Verilog memory files. See `docs/ARCHITECTURE.md` and `docs/PERFORMANCE.md`.
+Keras documentation:
+https://keras.io/guides/sequential_model/
+https://keras.io/api/datasets/mnist/
+
+AMD Vivado project Tcl documentation:
+https://docs.amd.com/r/2023.2-English/ug895-vivado-system-level-design-entry/Creating-a-Project-Using-a-Tcl-Script
